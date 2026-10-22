@@ -1,0 +1,122 @@
+{
+  "description": "Contracts for the tools exposed to the agent. Documentation only, not an n8n export.",
+  "agent": {
+    "framework": "n8n AI Agent node",
+    "model": "swappable chat model (not part of the contract)",
+    "memory": "windowed conversation memory keyed by the admin's sender id",
+    "max_iterations": "capped to stop failing-tool loops",
+    "confirmation": "every send needs an explicit YES / NO from the admin (prompt-enforced)"
+  },
+  "tools": [
+    {
+      "name": "STUDENTS QUERY",
+      "kind": "lookup",
+      "table": "students",
+      "match": [
+        {
+          "column": "student_number",
+          "operator": "equals"
+        },
+        {
+          "column": "name",
+          "operator": "ilike (partial, case-insensitive)"
+        }
+      ],
+      "combine": "any filter (OR); unset filters get a value that matches nothing",
+      "returns": [
+        "id",
+        "student_number",
+        "name",
+        "email",
+        "whatsapp_number"
+      ],
+      "limit": 10
+    },
+    {
+      "name": "student_parents lookup",
+      "kind": "lookup",
+      "table": "student_parents",
+      "match": [
+        {
+          "column": "student_id",
+          "operator": "equals"
+        }
+      ],
+      "returns": [
+        "parent_id",
+        "relationship"
+      ],
+      "limit": 10
+    },
+    {
+      "name": "PARENTS QUERY",
+      "kind": "lookup",
+      "table": "parents",
+      "match": [
+        {
+          "column": "name",
+          "operator": "ilike"
+        },
+        {
+          "column": "id",
+          "operator": "equals"
+        }
+      ],
+      "returns": [
+        "id",
+        "name",
+        "email",
+        "whatsapp_number"
+      ],
+      "limit": 10
+    },
+    {
+      "name": "send_message_via_email",
+      "kind": "action",
+      "implementation": "sub-workflow: send the email, then log it to messages",
+      "preconditions": [
+        "admin replied YES to the latest draft"
+      ],
+      "inputs": {
+        "admin_id": "uuid of the admin row (mapped by the workflow, not chosen by the model)",
+        "channel": "email",
+        "destination": "recipient email address",
+        "subject": "short subject line",
+        "message_text": "exact drafted text",
+        "recipient_type": "student | parent",
+        "recipient_id": "uuid of the recipient"
+      },
+      "returns": "a result message that the agent relays to the admin",
+      "ordering": "log only after the send succeeds"
+    },
+    {
+      "name": "Send To ALL Parents",
+      "kind": "action",
+      "implementation": "sub-workflow: read all parents, one email per parent",
+      "preconditions": [
+        "draft addressed to all parents",
+        "admin replied YES"
+      ],
+      "inputs": {
+        "admin_id": "uuid of the admin row",
+        "subject": "short subject line",
+        "message_text": "exact drafted text"
+      },
+      "note": "the model never sees or handles the recipient list; the read currently has a test limit of 5 rows"
+    },
+    {
+      "name": "alert_developer",
+      "kind": "alert",
+      "implementation": "message to the developer on a separate channel",
+      "inputs": {
+        "error_details": "tool name, what the admin asked, exact error text"
+      },
+      "reliability": "best effort; depends on the model following instructions"
+    }
+  ],
+  "error_layers": [
+    "agent error output: always replies to the admin and alerts the developer, no model needed",
+    "separate error workflow: catches crashes after the agent, set per workflow",
+    "alert tool on the agent: best effort for tool failures the agent recovers from"
+  ]
+}

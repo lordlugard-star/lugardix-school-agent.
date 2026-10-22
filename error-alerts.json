@@ -1,0 +1,56 @@
+{
+  "name": "ERROR ALERTS",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "14e353ed-c7e7-41a0-810a-9bf0423eff54",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "<PHONE_OR_ID>",
+        "text": "=⚠️ Workflow failed: {{ $json.workflow.name }} Node: {{ $json.execution.lastNodeExecuted }} Error: {{ String($json.execution.error.message).replace(/[_*`\\[\\]]/g, ' ') }} {{ $json.execution.url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        464,
+        -160
+      ],
+      "id": "ac652e74-9376-4b33-ab85-97fe17eb84dc",
+      "name": "Send a text message",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "telegramApi"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

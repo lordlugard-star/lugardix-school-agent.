@@ -1,0 +1,171 @@
+{
+  "name": "My Sub-Workflow 1 EMAIL PLUS LOG",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "admin_id"
+            },
+            {
+              "name": "channel"
+            },
+            {
+              "name": "destination"
+            },
+            {
+              "name": "subject"
+            },
+            {
+              "name": "message_text"
+            },
+            {
+              "name": "recipient_type"
+            },
+            {
+              "name": "recipient_id"
+            }
+          ]
+        }
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        112,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.destination }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.message_text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        416
+      ],
+      "id": "c36cfee5-a75a-44c6-901b-f9ab98dba5a1",
+      "name": "Send a message",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "gmailOAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "admin_id",
+              "fieldValue": "={{ $('When Executed by Another Workflow').item.json.admin_id }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $('When Executed by Another Workflow').item.json.message_text }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $('When Executed by Another Workflow').item.json.channel.toLowerCase() }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "sent"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        576,
+        240
+      ],
+      "id": "1940b3e8-c0fb-440a-a971-402db8bb8c05",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_ME",
+          "name": "supabaseApi"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5d78e64d-ea24-456b-9349-a7221ce8b467",
+              "name": "results",
+              "value": "=Email sent to {{ $('When Executed by Another Workflow').item.json.destination }}.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        96
+      ],
+      "id": "076ff747-ff05-4daa-93ab-8ca2f233f4a9",
+      "name": "Edit Fields"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

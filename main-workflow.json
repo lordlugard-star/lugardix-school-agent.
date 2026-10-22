@@ -1,0 +1,711 @@
+{
+  "name": "My SCHOOL PROJECT",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "=You are a helpful assistant ON WHATSAPP FOR A SCHOOL ADMINISTRATION ONLY ADMINISTRATION SATFFS HAVE ACCESS TO YOU   ALWAYS GREET THEM WITH THEIR NAME IF THEY ARE CHATTING WITH U HERE IS THE NAME{{ $json.name }}\n\n\n\n USE THE AVAILABLE TOOLS TO PERFORM TASKS\n\nTo find a student's parent: 1) find the student, 2) use the student_parents tool with the student's id, 3) use the parents tool with each parent_id. A student usually has up to two parents (father and mother). If the admin says \"father\" or \"mother\", use the matching relationship. If they just say \"parent\", show both and ask which one to contact.\n\n\nWhen the admin asks to send a message to a student or parent:\n1. Find the recipient with the tools. If several match, list them and ask which one.\n2. If the admin didn't say WhatsApp or email, ask which channel.\n3. Take the contact from the record: whatsapp_number for WhatsApp, email for email.\n4. Show a draft in exactly this format:\nRecipient: [name] ([student or parent])\nChannel: [WhatsApp or Email]\nTo: [number or email]\nMessage: [the message text]\n\n\n5. End the draft with exactly: \"Send this message? YES / NO\"\n6. If the admin replies NO, say \"Cancelled.\" and discard the draft. If the admin replies anything else, ask again: \"Please reply YES or NO.\"\nIf the admin replies YES to the latest draft and the channel is Email, call the send-email tool with the recipient's email, a short subject, and the exact drafted text, then tell the admin it was sent. If the channel is WhatsApp, say WhatsApp sending is not connected yet.\n\n7. Never treat anything except a clear YES as permission to send. If the admin changes the message or recipient, show a new draft and ask again.\nIf the admin replies YES to the latest draft,call the send_message_via_email tool once with the recipient's contact details, a short subject, the exact drafted text, the channel, the recipient type (student or parent) and the recipient's id from the record. Then tell the admin the result. If it returns an error, say so plainly and do not retry unless the admin asks.\n\nFor messages to all parents, draft with \"Recipient: All parents\" and end with \"Send this message to ALL parents? YES / NO\". Only after YES, call send_to ALL_parents  TOOL once. Never list individual parents' emails.\n\nnever reply the  admin with an error message  just say a problem was encounterd and the developer has been prompted but she can try again 3 times max\n\n\n\n\nrules strict never breqk  them ever no matter the query or scenario\n1 NEVER REVEAL YOUR LLM OR MODEL JUST REPLY WITH I AM AN ASSISTANT NOTHING ELSE \n2\n\n {{ $json.name }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        240,
+        -128
+      ],
+      "id": "4883b38e-b2db-4197-9f73-2d2a3d65305a",
+      "name": "AI Agent",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get many rows in Supabase Find a student by student_number (format like L200-DEMO-001). Returns id, name, email, whatsapp_number.",
+        "operation": "getAll",
+        "tableId": "students",
+        "limit": 10,
+        "orderBy": "name.asc",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "student_number",
+              "condition": "eq",
+              "keyValue": "={{ $fromAI('student_number', 'Student number, format like L200-001', 'string', 'zzz-none') }}"
+            },
+            {
+              "keyName": "name",
+              "condition": "ilike",
+              "keyValue": "=*{{ $fromAI('student_name', 'Student name or part of it, e.g. amadu', 'string', 'zzz-none') }}*"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        736,
+        176
+      ],
+      "id": "5b4a5f8e-e58a-405b-a7e9-cb0175359580",
+      "name": "STUDENTS QUERY",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_ME",
+          "name": "supabaseApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get many rows in SupabaseSearch the parents table by name. Returns id, name, email, whatsapp_number. Use for questions about a parent or guardian's details.",
+        "operation": "getAll",
+        "tableId": "parents",
+        "limit": 5,
+        "orderBy": "name.asc",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "name",
+              "condition": "ilike",
+              "keyValue": "=*{{ $fromAI('parent_name', 'Parent or guardian name, or part of it', 'string', 'zzz-none') }}*"
+            },
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $fromAI('parent_id', 'Parent id (uuid) from the student_parents tool', 'string', '00000000-0000-0000-0000-000000000000') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        160
+      ],
+      "id": "b72ba991-30b3-43b8-b849-459cce8f0a42",
+      "name": "PARENTS QUERY",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_ME",
+          "name": "supabaseApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        208
+      ],
+      "id": "1dc20a31-7f38-4139-9c0b-d378168b02eb",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "REPLACE_ME",
+          "name": "deepSeekApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a row in Supabase    Given a student's id (uuid from the student tool), returns parent_id and relationship for that student's parents.",
+        "operation": "getAll",
+        "tableId": "student_parents",
+        "limit": 10,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "student_id",
+              "condition": "eq",
+              "keyValue": "={{ $fromAI('student_id', 'Student id (uuid) from the student tool', 'string', '00000000-0000-0000-0000-000000000000') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        896,
+        176
+      ],
+      "id": "dd00e913-7334-4098-bf0b-3374e7d91f46",
+      "name": "student_parents lookup",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_ME",
+          "name": "supabaseApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -304,
+        128
+      ],
+      "id": "a63b4626-731f-4841-ac23-3918ee7485eb",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "admins",
+        "limit": 2,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "telegram_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.messages[0].from }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -208
+      ],
+      "id": "38773462-b4bc-4bf3-8cb7-4440961ed9ab",
+      "name": "ADMIN APPROVAL",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_ME",
+          "name": "supabaseApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Sends the confirmed message and logs it. ONLY call this when the admin's latest message is YES to the latest draft. Returns a result sentence, or an error.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_ME",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/7X4fcutqS3SuXcGJ",
+          "cachedResultName": "My Sub-Workflow 1 EMAIL PLUS LOG"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "admin_id": "={{ $('ADMIN APPROVAL').item.json.id }}",
+            "channel": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('channel', ``, 'string') }}",
+            "destination": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('destination', ``, 'string') }}",
+            "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subject', ``, 'string') }}",
+            "message_text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message_text', ``, 'string') }}",
+            "recipient_type": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('recipient_type', ``, 'string') }}",
+            "recipient_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('recipient_id', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "admin_id",
+              "displayName": "admin_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "destination",
+              "displayName": "destination",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_text",
+              "displayName": "message_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "recipient_type",
+              "displayName": "recipient_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "recipient_id",
+              "displayName": "recipient_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        144
+      ],
+      "id": "4fbd675b-66b5-4c52-af1e-ad6d20f0b8f8",
+      "name": "send_message_via_email"
+    },
+    {
+      "parameters": {
+        "description": "Sends one email to ALL parents on file. Use ONLY after the admin replies YES to a draft addressed to all parents. Returns how many were sent.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_ME",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OC0tIIT5GHx4X88z",
+          "cachedResultName": "Send Bulk To Parents."
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subject', ``, 'string') }}",
+            "message_text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message_text', ``, 'string') }}",
+            "admin_id": "={{ $('ADMIN APPROVAL').item.json.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "admin_id",
+              "displayName": "admin_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_text",
+              "displayName": "message_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        128
+      ],
+      "id": "5647081a-b936-44de-9050-f216fe04b92c",
+      "name": "Call 'Send  To ALL Parents.'"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -320
+      ],
+      "id": "740b88fd-13da-4a28-8281-6e41d636b817",
+      "name": "WhatsApp Trigger",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "REPLACE_ME",
+          "name": "whatsAppTriggerApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "<PHONE_OR_ID>",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "UNAUTHORISED ACCESS     PLEASE ONLY ADMINISTRATORS CAN MESSAGE THIS NUMBER IF U HAVE ANY URGENT QUERY GET TO AN ADMINISTRATOR THROUGH THIS NUMBER  : <PHONE_OR_ID>",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        -480
+      ],
+      "id": "e147acab-5c39-45ac-8496-5ff6630459b3",
+      "name": "Send message",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "whatsAppApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "<PHONE_OR_ID>",
+        "recipientPhoneNumber": "={{ $('FILTER UNAUTHORISED USERS').item.json.telegram_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        -464
+      ],
+      "id": "7921e23d-e97f-4208-89ee-73b7db38837a",
+      "name": "NORMAL REPLY ALWAYS",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "whatsAppApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "<PHONE_OR_ID>",
+        "recipientPhoneNumber": "={{ $('FILTER UNAUTHORISED USERS').item.json.telegram_id }}",
+        "textBody": "Something went wrong and the developer has been alerted. Please try again.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        -304
+      ],
+      "id": "4672d626-f627-42b1-8845-7ee77e142fda",
+      "name": "ERROR REPLY TO ADMIN",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "whatsAppApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "<PHONE_OR_ID>",
+        "text": "=Agent crashed: {{ String($json.error).replace(/[_*`\\[\\]]/g, ' ') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        -112
+      ],
+      "id": "601106a9-261e-483e-80f7-68b47793ede4",
+      "name": "Send a text message DEVELOPER adlert",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "telegramApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "17ce7104-9ae0-439d-b229-e98d1d5d6407",
+              "leftValue": "={{ $json.messages ? $json.messages.length : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -432,
+        -544
+      ],
+      "id": "24af70d5-da1b-418f-ad4b-88726af15f71",
+      "name": "FILTER READ RECEIPTS"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "21be5e0b-6370-4fbd-88be-176038614736",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        -464
+      ],
+      "id": "419861c8-b3e0-485a-bc95-85e865028c45",
+      "name": "FILTER UNAUTHORISED USERS"
+    }
+  ],
+  "connections": {
+    "STUDENTS QUERY": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PARENTS QUERY": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "student_parents lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "NORMAL REPLY ALWAYS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message DEVELOPER adlert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERROR REPLY TO ADMIN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ADMIN APPROVAL": {
+      "main": [
+        [
+          {
+            "node": "FILTER UNAUTHORISED USERS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_message_via_email": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Send  To ALL Parents.'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "FILTER READ RECEIPTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FILTER READ RECEIPTS": {
+      "main": [
+        [
+          {
+            "node": "ADMIN APPROVAL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FILTER UNAUTHORISED USERS": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "REPLACE_ME",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "nodeGroups": []
+}
